@@ -76,20 +76,20 @@ exports.acceptInvite = functions.https.onCall((data, context) => {
   // const uid = context.auth.uid;
   // const name = context.auth.token.name || null;
   // const picture = context.auth.token.picture || null;
-  const email = context.auth.token.email || null;
+  const email = data.accepterEmail || context.auth.token.email || null;
   console.log("Accepter email:", email);
 
-  const inviterEmail = data.inviterEmail;
-  console.log("Inviter email:", inviterEmail);
+  const requesterEmail = data.requesterEmail;
+  console.log("Inviter email:", requesterEmail);
 
   return admin
     .database()
     .ref(`/users/${emailToId(email)}/friends`)
-    .push(inviterEmail)
+    .push(requesterEmail)
     .then(() => {
       return admin
         .database()
-        .ref(`/users/${emailToId(inviterEmail)}/friends`)
+        .ref(`/users/${emailToId(requesterEmail)}/friends`)
         .push(email);
     });
 });
