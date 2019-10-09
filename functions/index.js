@@ -50,7 +50,7 @@ exports.getInvites = functions.https.onCall((data, context) => {
   });
 
 exports.getFriends = functions.https.onCall((data, context) => {
-    const userEmail = context.auth.token.email || null;
+    const userEmail = data.email || context.auth.token.email || null;
   
     return admin
       .database()
@@ -62,13 +62,13 @@ exports.getFriends = functions.https.onCall((data, context) => {
   });
 
 exports.sendInvite = functions.https.onCall((data, context) => {
-  const inviterEmail = context.auth.token.email || null;
+  const requesterEmail = data.requesterEmail || context.auth.token.email || null;
   const invitedEmail = data.invitedEmail;
 
   return admin
     .database()
     .ref(`/users/${emailToId(invitedEmail)}/invites`)
-    .push(inviterEmail)
+    .push(requesterEmail)
 
 });
 
