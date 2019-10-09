@@ -33,6 +33,22 @@ admin.initializeApp();
 const emailToId = email => email.replace(".", ",");
 const idToEmail = email => email.replace(",", ".");
 
+exports.getInvites = functions.https.onCall((data, context) => {
+    const userEmail = data.email;
+    console.log(userEmail);
+  
+    return admin
+      .database()
+      .ref(`/users/${emailToId(userEmail)}/invites`)
+      .once("value").then(snap => {
+        const resp =snap.val();
+        console.log(resp);
+          
+        return resp;
+      });
+  
+  });
+
 exports.sendInvite = functions.https.onCall((data, context) => {
   const inviterEmail = context.auth.token.email || null;
   const invitedEmail = data.invitedEmail;
