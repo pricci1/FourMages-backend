@@ -49,6 +49,18 @@ exports.getInvites = functions.https.onCall((data, context) => {
   
   });
 
+exports.getFriends = functions.https.onCall((data, context) => {
+    const userEmail = context.auth.token.email || null;
+  
+    return admin
+      .database()
+      .ref(`/users/${emailToId(userEmail)}/friends`)
+      .once("value").then(snap => {
+        return snap.val();
+      });
+  
+  });
+
 exports.sendInvite = functions.https.onCall((data, context) => {
   const inviterEmail = context.auth.token.email || null;
   const invitedEmail = data.invitedEmail;
