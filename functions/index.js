@@ -129,3 +129,38 @@ exports.removeInvitesOnFriendCreation = functions.database
 
     return Promise.all(removePromises);
   });
+
+function createStatisticsField(userId){
+  return admin
+  .database()
+  .ref("/statistics/" + userId).set({
+    attack_cards_played: 0,
+    condition_cards_played: 0,
+    healing_cards_played: 0,
+    games_lost: 0,
+    games_played: 0,
+    games_played_with_earth: 0,
+    games_played_with_wind: 0,
+    games_played_with_fire: 0,
+    games_played_with_water: 0,
+    games_won: 0
+  });
+}
+
+exports.createStatsOnUserCreation = functions.database
+.ref("/users/{userId}")
+.onCreate(async (snapshot, context) => {
+  const userId = context.params.userId;
+  return createStatisticsField(userId);
+});
+
+/*exports.updateStatsOnGameStart = functions.database
+.ref("games/{gameId}/players/{playerId}")
+.onCreate(async (snapshot, context) => {
+  var playerId = "";
+  await snapshot.ref.once("value").then(snap => {
+    playerId = snap.val();
+  });
+
+
+})*/
