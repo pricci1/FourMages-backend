@@ -154,13 +154,29 @@ exports.createStatsOnUserCreation = functions.database
   return createStatisticsField(userId);
 });
 
-/*exports.updateStatsOnGameStart = functions.database
+function increaseStat(userId, stat){
+  return admin
+  .database()
+  .ref("/statistics/"+userId+"/"+stat).transaction(stat => {
+    return stat + 1;
+  });
+}
+
+function getWizType(gameId, userId){
+  return admin
+  .database()
+  .ref("games/" + gameId + "/players/" + userId + "/wiz_type")
+  .once("value").then(snap => {
+    return snap.val();
+  });
+}
+
+exports.updateStatsOnGameStart = functions.database
 .ref("games/{gameId}/players/{playerId}")
 .onCreate(async (snapshot, context) => {
-  var playerId = "";
-  await snapshot.ref.once("value").then(snap => {
-    playerId = snap.val();
-  });
-
-
-})*/
+  var playerId = context.params.playerId;
+  var gameId = context.params.gameId;
+  var stat = "games_played";
+  var wiz_type = await getWizType(gameId, playerId)
+  return Promise.all([increaseStat(playerId, stat), increaseStat(playerId, "games_played_with_" + wiz_type)])
+});
