@@ -61,6 +61,17 @@ exports.getFriends = functions.https.onCall((data, context) => {
   
   });
 
+exports.getStatistics = functions.https.onCall((data, context) => {
+  const userEmail = data.email || context.auth.token.email || null;
+
+  return admin
+    .database()
+    .ref("/statistics/" + emailToId(userEmail))
+    .once("value").then(snap => {
+      return snap.val();
+    });
+});
+
 exports.sendInvite = functions.https.onCall((data, context) => {
   const requesterEmail = data.requesterEmail || context.auth.token.email || null;
   const invitedEmail = data.invitedEmail;
@@ -180,3 +191,4 @@ exports.updateStatsOnGameStart = functions.database
   var wiz_type = await getWizType(gameId, playerId)
   return Promise.all([increaseStat(playerId, stat), increaseStat(playerId, "games_played_with_" + wiz_type)])
 });
+
