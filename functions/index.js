@@ -180,3 +180,35 @@ exports.updateStatsOnGameStart = functions.database
   var wiz_type = await getWizType(gameId, playerId)
   return Promise.all([increaseStat(playerId, stat), increaseStat(playerId, "games_played_with_" + wiz_type)])
 });
+
+exports.watchGameCompletion = functions.database
+.ref("/games/{gameId}/turn/{effectId}/")
+.onUpdate(async (change, context) => {
+    const gameId = context.params.gameId;
+    // Check if new value is != -1
+    const newValue = change.after.child('scroll').val();
+    if (newValue === -1) {
+        return null;
+    }
+    // Check the rest of the scrolls
+    var effects;
+    var scrolls = [];
+    const turnRef = admin.database().ref(`/games/${gameId}/turn/`)
+    await turnRef.once("value").then(snap => {
+        effects = snap.val();
+    });
+    if (Object.keys(effects).length < 1) {
+        return ;
+    }
+    for (effect in effects) {
+        scrolls.push(effects[effect].scroll);
+    }
+    if (scrolls.every(value => value > -1)) {
+        return turnRef.parent.child("turnEnded").set(1)
+    }
+
+    console.log(scrolls);
+    return ;
+
+    // set turnEnded = 1
+});
