@@ -204,7 +204,13 @@ exports.watchGameCompletion = functions.database
         scrolls.push(effects[effect].scroll);
     }
     if (scrolls.every(value => value > -1)) {
-        return turnRef.parent.child("turnEnded").set(1)
+        const tasks = [
+            turnRef.parent.child("target1").set(randomIntBetween(0, 4)),
+            turnRef.parent.child("target2").set(randomIntBetween(0, 4)),
+            turnRef.parent.child("target3").set(randomIntBetween(0, 4)),
+            turnRef.parent.child("turnEnded").set(1)
+        ];
+        return Promise.all(tasks);
     }
 
     console.log(scrolls);
