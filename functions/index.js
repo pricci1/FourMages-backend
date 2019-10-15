@@ -224,6 +224,25 @@ function randomIntBetween(low, high) {
 }
 
 exports.inviteFriendsToNewGame = functions.https.onCall((data, context) => {
-    const invitedUsers = data.friends;
+    const invitedUsers = [data.user1, data.user2, data.user3];
+    console.log(invitedUsers);
+
+    const gameId = Date.now() * 100 + randomIntBetween(100, 999);
+
+    const usersRef = admin.database().ref(`/users/`);
+    const gameInviteUsersRef = admin.database().ref(`/game_invites/${gameId}/users`);
+
+    const tasks = []
+    invitedUsers.forEach(user => {
+        tasks.push(usersRef.child(emailToId(user)).child('game_invites').push(gameId));
+        tasks.push(gameInviteUsersRef.child(emailToId(user)).set(0));
+    });
+
+    Promise.all(tasks).then(() => {
+        return {success: true, gameId};
+    }).catch(() => {
+        return {success: false};
+    });
+});
      
 });
