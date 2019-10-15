@@ -245,4 +245,14 @@ exports.inviteFriendsToNewGame = functions.https.onCall((data, context) => {
     });
 });
      
+exports.getGameInvites = functions.https.onCall((data, context) => {
+    const userEmail = data.email || context.auth.token.email || null;
+  
+    return admin
+      .database()
+      .ref(`/users/${emailToId(userEmail)}/game_invites`)
+      .once("value").then(snap => {
+        return snap.val();
+      });
+  
 });
