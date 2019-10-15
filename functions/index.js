@@ -61,17 +61,6 @@ exports.getFriends = functions.https.onCall((data, context) => {
   
   });
 
-exports.getStatistics = functions.https.onCall((data, context) => {
-  const userEmail = data.email || context.auth.token.email || null;
-
-  return admin
-    .database()
-    .ref("/statistics/" + emailToId(userEmail))
-    .once("value").then(snap => {
-      return snap.val();
-    });
-});
-
 exports.sendInvite = functions.https.onCall((data, context) => {
   const requesterEmail = data.requesterEmail || context.auth.token.email || null;
   const invitedEmail = data.invitedEmail;
@@ -228,4 +217,13 @@ exports.watchGameCompletion = functions.database
     return ;
 
     // set turnEnded = 1
+});
+
+function randomIntBetween(low, high) {
+    return Math.floor(Math.random() * (high+1)) + low
+}
+
+exports.inviteFriendsToNewGame = functions.https.onCall((data, context) => {
+    const invitedUsers = data.friends;
+     
 });
