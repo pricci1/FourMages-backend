@@ -177,8 +177,8 @@ exports.updateStatsOnGameStart = functions.database
   var playerId = context.params.playerId;
   var gameId = context.params.gameId;
   var stat = "games_played";
-  var wiz_type = await getWizType(gameId, playerId)
-  return Promise.all([increaseStat(playerId, stat), increaseStat(playerId, "games_played_with_" + wiz_type)])
+  var wiz_type = await getWizType(gameId, playerId);
+  return Promise.all([increaseStat(playerId, stat), increaseStat(playerId, "games_played_with_" + wiz_type)]);
 });
 
 exports.watchGameCompletion = functions.database
@@ -226,4 +226,30 @@ function randomIntBetween(low, high) {
 exports.inviteFriendsToNewGame = functions.https.onCall((data, context) => {
     const invitedUsers = data.friends;
      
+});
+
+function getScrollType(scrollId){
+  return admin
+  .database()
+  .ref("scrolls/" + scrollId + "/type")
+  .once("value").then( snap => {
+    return snap.val();
+  });
+}
+
+function effectIdToUserId(effectId){
+  return effectId.split("_")[1];
+}
+
+exports.updateStatsOnScrollPlayed = functions.database
+  .ref("games/{gameId}/turn/{effectId}/scroll")
+  .onCreate(async (snapshot, context) => {
+    const effectId = context.params.effectId;
+    const userId = effectIdToUserId(effectId);
+    var scrollId = "";
+    await snapshot.ref.once("value").then( snap => {
+      scrollId = snap.val();
+    });
+    var scrollType = await getScrollType(scrollId);
+    return increaseStat(userId, scrollType + "_cards_played");
 });
