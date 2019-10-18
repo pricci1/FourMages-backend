@@ -278,3 +278,23 @@ exports.acceptGameInvite = functions.https.onCall(async (data, context) => {
         return { success: true }
     });
 });
+
+exports.getDisplayName = functions.https.onCall(async (data, context) => {
+    const userEmail = data.email || context.auth.token.email || null;
+    const userRef = admin.database().ref(`/users/${emailToId(userEmail)}`);
+
+    console.log("faulty mail: ", userEmail);
+    
+    var displayName = "NEWDidNotFindDisplayName@mail.com"
+    await userRef.child("DisplayName").once("value").then(snap => {
+        displayName = snap.val();
+        console.log("Display name found: ", displayName);
+        
+        return displayName;
+    }).catch(() => {
+        console.log("CATCH Display name found: ", displayName);
+        return displayName;
+    });
+
+    return displayName;
+});
