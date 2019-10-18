@@ -227,6 +227,7 @@ function randomIntBetween(low, high) {
 
 exports.inviteFriendsToNewGame = functions.https.onCall((data, context) => {
     const invitedUsers = [data.user1, data.user2, data.user3];
+    const creator = data.creator;
     console.log(invitedUsers);
 
     const gameId = Date.now() * 100 + randomIntBetween(100, 999);
@@ -239,6 +240,8 @@ exports.inviteFriendsToNewGame = functions.https.onCall((data, context) => {
         tasks.push(usersRef.child(emailToId(user)).child('game_invites').push(gameId));
         tasks.push(gameInviteUsersRef.child(emailToId(user)).set(0));
     });
+    // Creator auto accepts invitation to its own game
+    tasks.push(gameInviteUsersRef.child(emailToId(creator)).set(1));
 
     Promise.all(tasks).then(() => {
         return {success: true, gameId};
