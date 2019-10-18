@@ -298,3 +298,88 @@ exports.getDisplayName = functions.https.onCall(async (data, context) => {
 
     return displayName;
 });
+
+function shuffleArray(array) {
+
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+exports.initGame = functions.database
+.ref("/game_invites/{gameId}/users/{userId}/")
+.onUpdate(async (change, context) => {
+    const gameId = context.params.gameId;
+    const userId = context.params.userId;
+    var players = {};
+    // Check if user accepted game invite (=== new value is == 1)
+    const newValue = change.after.val();
+    if (newValue != 1) {
+        return null;
+    }
+    // Check the rest of the invites state
+    var usersInviteStates;
+    var inviteStates = [];
+    const usersInviteStatesRef = admin.database().ref(`/game_invites/${gameId}/users/`)
+    await usersInviteStatesRef.once("value").then(snap => {
+        usersInviteStates = snap.val();
+    });
+    if (Object.keys(usersInviteStatesRef).length < playersCount) {
+        return ;
+    }
+
+    var magesTypes = ["water", "earth", "wind", "fire"];
+    shuffleArray(magesTypes);
+    const users = [];
+    for (user in usersInviteStates) {
+        inviteStates.push(usersInviteStates[user]);
+        players[emailToId(user)] = magesTypes.pop();
+        users.push(user);
+    }
+
+    if (inviteStates.every(value => value == 1)) {
+        // Initialize game:
+        //      - remove game from /game_invites/
+        //      - add gameId to /games
+        //      - add gameId in user's active_games
+        
+
+        const usersRef = admin.database().ref(`/users`); 
+        const game = admin.database().ref(`/games/${gameId}`);            
+        const tasks = [
+            usersInviteStatesRef.parent.remove(),
+            game.child("players").set(players),
+            game.child("enemy1").set(5),
+            game.child("enemy2").set(7),
+            game.child("enemy3").set(7),
+            game.child("level").set(1),
+            game.child("levelUp").set(0),
+            game.child("mageEarth").set(10),
+            game.child("mageFire").set(10),
+            game.child("mageWater").set(10),
+            game.child("mageWind").set(10),
+            game.child("turnEnded").set(0),
+            game.child("target1").set(1),
+            game.child("target2").set(2),
+            game.child("target3").set(3),
+            game.child("starts").set(
+              { start_earth: 1,
+                start_fire: 1,
+                start_water: 1,
+                start_wind: 1, }
+            )
+        ];
+        users.forEach(user => {
+            tasks.push(
+                usersRef.child(emailToId(user))
+                        .child("active_games").push(gameId)
+                );
+        });
+        return Promise.all(tasks);
+    }
+
+    return ;
+
+    // set turnEnded = 1
+});
