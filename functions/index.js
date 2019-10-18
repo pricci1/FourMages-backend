@@ -33,6 +33,8 @@ admin.initializeApp();
 const emailToId = email => email.replace(".", ",");
 const idToEmail = email => email.replace(",", ".");
 
+const playersCount = 4;
+
 exports.getInvites = functions.https.onCall((data, context) => {
     const userEmail = data.email;
     console.log(userEmail);
@@ -181,29 +183,31 @@ exports.updateStatsOnGameStart = functions.database
   return Promise.all([increaseStat(playerId, stat), increaseStat(playerId, "games_played_with_" + wiz_type)])
 });
 
-exports.watchGameCompletion = functions.database
-.ref("/games/{gameId}/turn/{effectId}/")
+exports.watchTurnCompletion = functions.database
+.ref("/games/{gameId}/starts/{startId}/")
 .onUpdate(async (change, context) => {
     const gameId = context.params.gameId;
-    // Check if new value is != -1
+    const startId = context.params.startId;
+    // Check if new value is != 1
     const newValue = change.after.child('scroll').val();
-    if (newValue === -1) {
+    if (newValue === 0) {
         return null;
     }
-    // Check the rest of the scrolls
-    var effects;
-    var scrolls = [];
     const turnRef = admin.database().ref(`/games/${gameId}/turn/`)
-    await turnRef.once("value").then(snap => {
-        effects = snap.val();
+    // Check the rest of the starts
+    var starts;
+    var startsStates = [];
+    const startsRef = admin.database().ref(`/games/${gameId}/starts/`)
+    await startsRef.once("value").then(snap => {
+        starts = snap.val();
     });
-    if (Object.keys(effects).length < 1) {
+    if (Object.keys(starts).length < playersCount) {
         return ;
     }
-    for (effect in effects) {
-        scrolls.push(effects[effect].scroll);
+    for (start in starts) {
+        startsStates.push(starts[start]);
     }
-    if (scrolls.every(value => value > -1)) {
+    if (startsStates.every(value => value === 0)) {
         const tasks = [
             turnRef.parent.child("target1").set(randomIntBetween(0, 4)),
             turnRef.parent.child("target2").set(randomIntBetween(0, 4)),
@@ -212,8 +216,6 @@ exports.watchGameCompletion = functions.database
         ];
         return Promise.all(tasks);
     }
-
-    console.log(scrolls);
     return ;
 
     // set turnEnded = 1
