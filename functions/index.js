@@ -383,3 +383,16 @@ exports.initGame = functions.database
 
     // set turnEnded = 1
 });
+
+exports.getActiveGames = functions.https.onCall(async (data, context) => {
+    const userEmail = data.email;
+
+    var response = {};
+    await admin
+      .database()
+      .ref(`/users/${emailToId(userEmail)}/active_games`)
+      .once("value").then(snap => {
+        response = snap.val();
+      });
+    return response;
+});
