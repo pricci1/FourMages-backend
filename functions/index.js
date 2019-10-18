@@ -261,3 +261,20 @@ exports.getGameInvites = functions.https.onCall((data, context) => {
       });
   
 });
+
+exports.acceptGameInvite = functions.https.onCall(async (data, context) => {
+    const userEmail = data.email || context.auth.token.email || null;
+    const gameId = data.gameId;
+
+    const gameInviteUsersRef = admin.database().ref(`/game_invites/${gameId}/users`);
+    const userRef = admin.database().ref(`/users/${emailToId(userEmail)}/game_invites`);
+
+    const tasks = [
+        gameInviteUsersRef.child(emailToId(userEmail)).set(1),
+        userRef.child(gameId).remove()
+    ];
+
+    await Promise.all(tasks).then(() => {
+        return { success: true }
+    });
+});
