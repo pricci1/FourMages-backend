@@ -253,3 +253,15 @@ exports.updateStatsOnScrollPlayed = functions.database
     var scrollType = await getScrollType(scrollId);
     return increaseStat(userId, scrollType + "_cards_played");
 });
+
+exports.notifyNewTurn = functions.database
+  .ref("games/{gameId}/turnEnded")
+  .onUpdate(async (change, context) => {
+    var turnEnded = "";
+    await change.ref.once("value").then( snap => {
+      turnEnded = snap.val();
+    });
+    if(turnEnded == 1){
+      // notify game players
+    }
+  });
