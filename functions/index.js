@@ -254,14 +254,36 @@ exports.updateStatsOnScrollPlayed = functions.database
     return increaseStat(userId, scrollType + "_cards_played");
 });
 
+function getGamePlayers(gameId){
+  return admin
+  .database()
+  .ref("games/" + gameId + "/players/{playerId}")
+  .on('value', function(snapshot) {
+    console.log(playerId);
+    return playerId;
+  });
+}
+
+function notifyPlayers(gameId){
+  const messaging = admin.messaging();
+  var players = getGamePlayers(gameId);
+  console.log(players);
+  messaging.requestPermission().then(function() {
+   // String token = FirebaseInstanceId.getInstance().getToken();
+   // retutn messaging.getToken();
+  });
+  
+}
+
 exports.notifyNewTurn = functions.database
   .ref("games/{gameId}/turnEnded")
   .onUpdate(async (change, context) => {
     var turnEnded = "";
+    const gameId = context.params.gameId;
     await change.ref.once("value").then( snap => {
       turnEnded = snap.val();
     });
     if(turnEnded == 1){
-      // notify game players
+      notifyPlayers(gameId);
     }
   });
