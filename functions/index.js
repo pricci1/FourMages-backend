@@ -448,3 +448,26 @@ exports.getActiveGames = functions.https.onCall(async (data, context) => {
       });
     return response;
 });
+
+exports.watchLevelUp = functions.database
+  .ref("/games/{gameId}/levelUp")
+  .onUpdate(async (change, context) => {
+    const gameId = context.params.gameId;
+    const newValue = change.after.val();
+    if (newValue < 1) {
+      return null;
+    }
+    const game = admin.database().ref(`/games/${gameId}`);
+    const tasks = [
+      game.child("starts").set(
+        { start_earth: 1,
+          start_fire: 1,
+          start_water: 1,
+          start_wind: 1, }
+      ),
+      game.child("turnEnded").set(0)
+    ];
+
+    await Promise.all(tasks);
+    return {success: true};
+  });
