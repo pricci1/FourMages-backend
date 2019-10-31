@@ -120,7 +120,7 @@ exports.sendFriendRequest = functions.https.onCall(async (data, context) => {
 
 });
 
-exports.acceptInvite = functions.https.onCall((data, context) => {
+exports.acceptInvite = functions.https.onCall(async (data, context) => {
   // const uid = context.auth.uid;
   // const name = context.auth.token.name || null;
   // const picture = context.auth.token.picture || null;
@@ -130,7 +130,7 @@ exports.acceptInvite = functions.https.onCall((data, context) => {
   const requesterEmail = data.requesterEmail;
   console.log("Inviter email:", requesterEmail);
 
-  return admin
+  await admin
     .database()
     .ref(`/users/${emailToId(email)}/friends`)
     .push(requesterEmail)
@@ -140,6 +140,8 @@ exports.acceptInvite = functions.https.onCall((data, context) => {
         .ref(`/users/${emailToId(requesterEmail)}/friends`)
         .push(email);
     });
+
+    return {success: true}
 });
 
 function getKeyByValue(object, value) {
