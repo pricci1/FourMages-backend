@@ -35,19 +35,20 @@ const idToEmail = email => email.replace(",", ".");
 
 const playersCount = 4;
 
-exports.getInvites = functions.https.onCall((data, context) => {
+exports.getInvites = functions.https.onCall(async (data, context) => {
     const userEmail = data.email;
     console.log(userEmail);
   
-    return admin
+    var invites = [];
+
+    await admin
       .database()
       .ref(`/users/${emailToId(userEmail)}/invites`)
       .once("value").then(snap => {
-        const resp =snap.val();
-        console.log(resp);
-          
-        return resp;
+        invites =snap.val();
       });
+  
+    return invites
   
   });
 
