@@ -255,7 +255,11 @@ exports.watchTurnCompletion = functions.database
     for (start in starts) {
         startsStates.push(starts[start]);
     }
-    if (startsStates.every(value => value === 0)) {
+    var turnEnded = 1;
+    await turnRef.parent.child("turnEnded").once("value").then(snap => {
+      turnEnded = snap.val();
+    });    
+    if (startsStates.every(value => value === 0) && turnEnded === 0) {
         const tasks = [
             turnRef.parent.child("target1").set(randomIntBetween(0, 4)),
             turnRef.parent.child("target2").set(randomIntBetween(0, 4)),
