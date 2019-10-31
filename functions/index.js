@@ -227,8 +227,8 @@ exports.updateStatsOnGameStart = functions.database
   var playerId = context.params.playerId;
   var gameId = context.params.gameId;
   var stat = "games_played";
-  var wiz_type = await getWizType(gameId, playerId)
-  return Promise.all([increaseStat(playerId, stat), increaseStat(playerId, "games_played_with_" + wiz_type)])
+  var wiz_type = await getWizType(gameId, playerId);
+  return Promise.all([increaseStat(playerId, stat), increaseStat(playerId, "games_played_with_" + wiz_type)]);
 });
 
 exports.watchTurnCompletion = functions.database
@@ -491,3 +491,63 @@ exports.levelUpIsOne = functions.database
     }
     return null;
 });
+
+function getScrollType(scrollId){
+  return admin
+  .database()
+  .ref("scrolls/" + scrollId + "/type")
+  .once("value").then( snap => {
+    return snap.val();
+  });
+}
+
+function effectIdToUserId(effectId){
+  return effectId.split("_")[1];
+}
+
+exports.updateStatsOnScrollPlayed = functions.database
+  .ref("games/{gameId}/turn/{effectId}/scroll")
+  .onCreate(async (snapshot, context) => {
+    const effectId = context.params.effectId;
+    const userId = effectIdToUserId(effectId);
+    var scrollId = "";
+    await snapshot.ref.once("value").then( snap => {
+      scrollId = snap.val();
+    });
+    var scrollType = await getScrollType(scrollId);
+    return increaseStat(userId, scrollType + "_cards_played");
+});
+
+function getGamePlayers(gameId){
+  return admin
+  .database()
+  .ref("games/" + gameId + "/players/{playerId}")
+  .on('value', function(snapshot) {
+    console.log(playerId);
+    return playerId;
+  });
+}
+
+function notifyPlayers(gameId){
+  const messaging = admin.messaging();
+  var players = getGamePlayers(gameId);
+  console.log(players);
+  messaging.requestPermission().then(function() {
+   // String token = FirebaseInstanceId.getInstance().getToken();
+   // retutn messaging.getToken();
+  });
+  
+}
+
+exports.notifyNewTurn = functions.database
+  .ref("games/{gameId}/turnEnded")
+  .onUpdate(async (change, context) => {
+    var turnEnded = "";
+    const gameId = context.params.gameId;
+    await change.ref.once("value").then( snap => {
+      turnEnded = snap.val();
+    });
+    if(turnEnded == 1){
+      notifyPlayers(gameId);
+    }
+  });
