@@ -471,3 +471,23 @@ exports.watchLevelUp = functions.database
     await Promise.all(tasks);
     return {success: true};
   });
+
+exports.levelUpIsOne = functions.database
+  .ref("/games/{gameId}/levelUp")
+  .onUpdate(async (change, context) => {
+    const gameId = context.params.gameId;
+    const newValue = change.after.val();
+    if (newValue === 1) {
+      const game = admin.database().ref(`/games/${gameId}`);
+      const tasks = [
+        game.child("level").transaction((current) => {
+          return (current || 0) + 1;
+        }),
+        game.child("turnEnded").set(0)
+      ];
+  
+      await Promise.all(tasks);
+      return {success: true};
+    }
+    return null;
+});
