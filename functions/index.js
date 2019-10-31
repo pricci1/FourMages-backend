@@ -68,14 +68,55 @@ exports.getFriends = functions.https.onCall(async (data, context) => {
   
   });
 
-exports.sendInvite = functions.https.onCall((data, context) => {
-  const requesterEmail = data.requesterEmail || context.auth.token.email || null;
-  const invitedEmail = data.invitedEmail;
+function objectHasValue(obj, value) {
+  if (obj && value) {
+    console.log("obj", obj);
+    console.log("value", value);
+    var found = Object.values(obj).find(val => val.replace(/[^a-zA-Z0-9 -]/i, "") === value);
+    return value.replace(/[^a-zA-Z0-9 -]/i, "") === found.replace(/[^a-zA-Z0-9 -]/i, "");
+  }
+  return false;
+}
 
-  return admin
-    .database()
-    .ref(`/users/${emailToId(invitedEmail)}/invites`)
-    .push(requesterEmail)
+exports.sendFriendRequest = functions.https.onCall(async (data, context) => {
+  const requesterEmail = data.requesterEmail || context.auth.token.email || null;
+  const invitedEmail = data.accepterEmail;
+
+  if (requesterEmail === invitedEmail) {
+    return {success: false};
+  }
+
+  const usersRef = admin.database().ref(`/users`);
+
+  var requesterFirends = {};
+  var invitedRequests = {};
+  const tasks = [
+      usersRef.child(emailToId(requesterEmail)).child("friends").once("value").then(snap => {
+        requesterFirends = snap.val();
+      }),
+      usersRef.child(emailToId(invitedEmail)).child("invites").once("value").then(snap => {
+        invitedRequests = snap.val();
+      })
+  ];
+
+  await Promise.all(tasks);
+
+ // if requesterEmail in invitedRequests OR invitedEmail in requesterFirends
+ // pass
+
+  if (objectHasValue(requesterFirends, invitedEmail) 
+      || objectHasValue(invitedRequests, requesterEmail)) {
+    console.log("this should run!!");
+    
+    return {success: false};
+  }
+ 
+  await usersRef
+    .child(emailToId(invitedEmail))
+    .child("invites")
+    .push(requesterEmail);
+
+  return {success: true}
 
 });
 
