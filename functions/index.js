@@ -52,15 +52,19 @@ exports.getInvites = functions.https.onCall(async (data, context) => {
   
   });
 
-exports.getFriends = functions.https.onCall((data, context) => {
+exports.getFriends = functions.https.onCall(async (data, context) => {
     const userEmail = data.email || context.auth.token.email || null;
   
-    return admin
+    var friends = [];
+  
+    await admin
       .database()
       .ref(`/users/${emailToId(userEmail)}/friends`)
       .once("value").then(snap => {
-        return snap.val();
+        friends = snap.val();
       });
+  
+    return friends;
   
   });
 
