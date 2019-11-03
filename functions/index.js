@@ -689,8 +689,39 @@ exports.initNewUser = functions.auth.user().onCreate(user => {
   const email = strClean(user.email);
   const uid = strClean(user.uid);
   const displayName = strClean(user.displayName)|| strClean(email);
-  admin.database().ref(`/users/${uid}`).set({email, displayName, gold:0});
-  admin.database().ref(`/emailUid/${emailToId(email)}`).set(uid);
+  const tasks = [
+    admin.database().ref(`/users/${uid}`).set({email, displayName, gold:0}),
+    admin.database().ref(`/emailUid/${emailToId(email)}`).set(uid),
+    admin.database().ref(`/decks/${uid}`).set(
+      {
+        "defaultScroll0" : {
+          "id" : 4,
+          "inDeck" : 1
+        },
+        "defaultScroll1" : {
+          "id" : 4,
+          "inDeck" : 1
+        },
+        "defaultScroll2" : {
+          "id" : 4,
+          "inDeck" : 1
+        },
+        "defaultScroll3" : {
+          "id" : 4,
+          "inDeck" : 1
+        },
+        "defaultScroll4" : {
+          "id" : 4,
+          "inDeck" : 1
+        },
+        "defaultScroll5" : {
+          "id" : 4,
+          "inDeck" : 1
+        }
+      }
+    ),
+  ];
+  return Promise.all(tasks);
 });
 
 function strClean(str) {
