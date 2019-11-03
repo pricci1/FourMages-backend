@@ -423,7 +423,7 @@ exports.initGame = functions.database
     const users = [];
     for (user in usersInviteStates) {
         inviteStates.push(usersInviteStates[user]);
-        players[emailToId(user)] = magesTypes.pop();
+        players[user] = magesTypes.pop();
         users.push(user);
     }
 
@@ -433,6 +433,7 @@ exports.initGame = functions.database
         //      - add gameId to /games
         //      - add gameId in user's active_games
         
+        const usersDecks = await getUsersDecks(users);
 
         const usersRef = admin.database().ref(`/users`); 
         const game = admin.database().ref(`/games/${gameId}`);            
@@ -465,6 +466,11 @@ exports.initGame = functions.database
                         .child("active_games").push(gameId)
                 );
         });
+        usersDecks.forEach(userDeck => {
+          tasks.push(
+            game.child("decks").child(players[userDeck["user"]]).set(userDeck["deck"])
+          );
+        })
         return Promise.all(tasks);
     }
 
@@ -685,4 +691,24 @@ function strClean(str) {
     return str.replace(/[\u200B-\u200D\uFEFF]/g, '');
   }
   return str;
+}
+
+async function getUsersDecks(users) {
+  const decksRef = admin.database().ref(`/decks`);
+  const decks = [];
+  for (const user of users) {
+    var deck = await decksRef.child(user).once("value").then(snap => {
+      return snap.val();
+    });
+    try {
+      deck = Object.values(deck);
+      // Only get scrolls inDeck
+      deck = deck.filter(scroll => scroll["inDeck"] == 1);
+      deck = deck.map(scroll => ({id: scroll["id"], used: 0}))
+      decks.push({ user, deck });
+    } catch (error) {
+      console.log(error);
+    }
+  }
+  return decks;
 }
