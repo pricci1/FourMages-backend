@@ -36,35 +36,37 @@ const idToEmail = email => email.replace(",", ".");
 const playersCount = 4;
 
 exports.getInvites = functions.https.onCall(async (data, context) => {
-    const userEmail = data.email;
-    console.log(userEmail);
+    const userUid = strClean(data.uid);
+    console.log(userUid);
   
     var invites = [];
 
     await admin
       .database()
-      .ref(`/users/${emailToId(userEmail)}/invites`)
+      .ref(`/users/${userUid}/invites`)
       .once("value").then(snap => {
         invites =snap.val();
       });
+    console.log("Invites: ", invites);
   
     return invites
   
   });
 
 exports.getFriends = functions.https.onCall(async (data, context) => {
-    const userEmail = data.email || context.auth.token.email || null;
+    const userUid = strClean(data.uid) || context.auth.token.uid || null;
   
     var friends = [];
   
     await admin
       .database()
-      .ref(`/users/${emailToId(userEmail)}/friends`)
+      .ref(`/users/${userUid}/friends`)
       .once("value").then(snap => {
         friends = snap.val();
       });
+    console.log("Friends: ", friends);
   
-    return friends;
+    return friends || {};
   
   });
 
@@ -73,28 +75,39 @@ function objectHasValue(obj, value) {
     console.log("obj", obj);
     console.log("value", value);
     var found = Object.values(obj).find(val => val.replace(/[^a-zA-Z0-9 -]/i, "") === value);
+    if (found) {
     return value.replace(/[^a-zA-Z0-9 -]/i, "") === found.replace(/[^a-zA-Z0-9 -]/i, "");
+  }
   }
   return false;
 }
 
 exports.sendFriendRequest = functions.https.onCall(async (data, context) => {
-  const requesterEmail = data.requesterEmail || context.auth.token.email || null;
-  const invitedEmail = data.accepterEmail;
+  const requesterUid = strClean(data.requesterUid) || context.auth.token.uid || null;
+  const invitedEmail = strClean(data.accepterEmail);
+  var invitedUid = await getUidFromEmail(strClean(invitedEmail));
+  console.log(invitedUid);
+  invitedUid = strClean(invitedUid);
+  console.log("Invited uid: ", invitedUid);
+  var requesterEmail = await getUserEmail(requesterUid);
+  requesterEmail = strClean(requesterEmail);
+  console.log("Requester: ",requesterUid, requesterEmail);
 
-  if (requesterEmail === invitedEmail) {
+
+
+  if (requesterUid === invitedUid) {
     return {success: false};
   }
 
   const usersRef = admin.database().ref(`/users`);
 
-  var requesterFirends = {};
+  var requesterFriends = {};
   var invitedRequests = {};
   const tasks = [
-      usersRef.child(emailToId(requesterEmail)).child("friends").once("value").then(snap => {
-        requesterFirends = snap.val();
+      usersRef.child(requesterUid).child("friends").once("value").then(snap => {
+        requesterFriends = snap.val();
       }),
-      usersRef.child(emailToId(invitedEmail)).child("invites").once("value").then(snap => {
+      usersRef.child(invitedUid).child("invites").once("value").then(snap => {
         invitedRequests = snap.val();
       })
   ];
@@ -104,15 +117,15 @@ exports.sendFriendRequest = functions.https.onCall(async (data, context) => {
  // if requesterEmail in invitedRequests OR invitedEmail in requesterFirends
  // pass
 
-  if (objectHasValue(requesterFirends, invitedEmail) 
+  if (objectHasValue(requesterFriends, invitedEmail) 
       || objectHasValue(invitedRequests, requesterEmail)) {
     console.log("this should run!!");
     
     return {success: false};
   }
- 
+  console.log("Llega al final");
   await usersRef
-    .child(emailToId(invitedEmail))
+    .child(invitedUid)
     .child("invites")
     .push(requesterEmail);
 
@@ -120,25 +133,42 @@ exports.sendFriendRequest = functions.https.onCall(async (data, context) => {
 
 });
 
+async function getUidFromEmail(email) {
+  const response = await admin.database().ref(`/emailUid/${emailToId(email)}`).once("value").then(snap => {
+    return snap.val();   
+  });
+  return response;
+}
+
+async function getUserEmail(userUid) {
+  const response = await admin.database().ref(`/users/${userUid}/email`).once("value").then(snap => {
+    return snap.val();   
+  });
+  return response;
+}
+
 exports.acceptInvite = functions.https.onCall(async (data, context) => {
   // const uid = context.auth.uid;
   // const name = context.auth.token.name || null;
   // const picture = context.auth.token.picture || null;
-  const email = data.accepterEmail || context.auth.token.email || null;
-  console.log("Accepter email:", email);
+  const accepterUid = strClean(data.accepterUid) || context.auth.token.uid || null;
+  const accepterEmail = await strClean(getUserEmail(accepterUid));
+  console.log("Accepter email:", accepterEmail);
 
   const requesterEmail = data.requesterEmail;
   console.log("Inviter email:", requesterEmail);
+  const requesterUid = await getUidFromEmail(requesterEmail);
+  console.log("Inviter uid:", requesterUid);
 
   await admin
     .database()
-    .ref(`/users/${emailToId(email)}/friends`)
+    .ref(`/users/${accepterUid}/friends`)
     .push(requesterEmail)
     .then(() => {
       return admin
         .database()
-        .ref(`/users/${emailToId(requesterEmail)}/friends`)
-        .push(email);
+        .ref(`/users/${requesterUid}/friends`)
+        .push(accepterEmail);
     });
 
     return {success: true}
@@ -277,23 +307,29 @@ function randomIntBetween(low, high) {
     return Math.floor(Math.random() * (high+1)) + low
 }
 
-exports.inviteFriendsToNewGame = functions.https.onCall((data, context) => {
+exports.inviteFriendsToNewGame = functions.https.onCall(async (data, context) => {
     const invitedUsers = [data.user1, data.user2, data.user3];
-    const creator = data.creator;
+    const creatorUid = strClean(data.creator);
     console.log(invitedUsers);
+
+    const invitedUsersUids = [];
+    for (const invitedEmail of invitedUsers) {
+      const invitedUid = await getUidFromEmail(strClean(invitedEmail));
+      invitedUsersUids.push(strClean(invitedUid));
+    }
 
     const gameId = Date.now() * 100 + randomIntBetween(100, 999);
 
-    const usersRef = admin.database().ref(`/users/`);
+    const usersRef = admin.database().ref(`/users`);
     const gameInviteUsersRef = admin.database().ref(`/game_invites/${gameId}/users`);
 
     const tasks = []
-    invitedUsers.forEach(user => {
-        tasks.push(usersRef.child(emailToId(user)).child('game_invites').push(gameId));
-        tasks.push(gameInviteUsersRef.child(emailToId(user)).set(0));
+    invitedUsersUids.forEach(userUid => {
+        tasks.push(usersRef.child(userUid).child('game_invites').push(gameId));
+        tasks.push(gameInviteUsersRef.child(userUid).set(0));
     });
     // Creator auto accepts invitation to its own game
-    tasks.push(gameInviteUsersRef.child(emailToId(creator)).set(1));
+    tasks.push(gameInviteUsersRef.child(creatorUid).set(1));
 
     Promise.all(tasks).then(() => {
         return {success: true, gameId};
@@ -303,11 +339,11 @@ exports.inviteFriendsToNewGame = functions.https.onCall((data, context) => {
 });
      
 exports.getGameInvites = functions.https.onCall((data, context) => {
-    const userEmail = data.email || context.auth.token.email || null;
+    const userUid = strClean(data.uid) || context.auth.token.uid || null;
   
     return admin
       .database()
-      .ref(`/users/${emailToId(userEmail)}/game_invites`)
+      .ref(`/users/${userUid}/game_invites`)
       .once("value").then(snap => {
         return snap.val();
       });
@@ -315,15 +351,15 @@ exports.getGameInvites = functions.https.onCall((data, context) => {
 });
 
 exports.acceptGameInvite = functions.https.onCall(async (data, context) => {
-    const userEmail = data.email || context.auth.token.email || null;
+    const userUid = data.uid || context.auth.token.uid || null;
     const gameId = data.gameId;
 
     const gameInviteUsersRef = admin.database().ref(`/game_invites/${gameId}/users`);
-    const userRef = admin.database().ref(`/users/${emailToId(userEmail)}/game_invites`);
+    const userGameInvitesRef = admin.database().ref(`/users/${userUid}/game_invites`);
 
     const tasks = [
-        gameInviteUsersRef.child(emailToId(userEmail)).set(1),
-        userRef.child(gameId).remove()
+        gameInviteUsersRef.child(userUid).set(1),
+        userGameInvitesRef.child(gameId).remove()
     ];
 
     await Promise.all(tasks).then(() => {
