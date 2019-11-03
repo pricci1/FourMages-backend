@@ -628,3 +628,11 @@ function getUnusedScrollsIds(scrolls) {
   }
   return unusedScrolls
 }
+
+
+function strClean(str) {
+  if (str && typeof str === 'string') {
+    return str.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  }
+  return str;
+}
