@@ -480,12 +480,12 @@ exports.initGame = functions.database
 });
 
 exports.getActiveGames = functions.https.onCall(async (data, context) => {
-    const userEmail = data.email;
+    const userUid = data.uid;
 
     var response = {};
     await admin
       .database()
-      .ref(`/users/${emailToId(userEmail)}/active_games`)
+      .ref(`/users/${userUid}/active_games`)
       .once("value").then(snap => {
         response = snap.val();
       });
