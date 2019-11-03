@@ -294,6 +294,7 @@ exports.watchTurnCompletion = functions.database
             turnRef.parent.child("target1").set(randomIntBetween(0, 4)),
             turnRef.parent.child("target2").set(randomIntBetween(0, 4)),
             turnRef.parent.child("target3").set(randomIntBetween(0, 4)),
+            drawScrolls(turnRef.parent),
             turnRef.parent.child("turnEnded").set(1)
         ];
         return Promise.all(tasks);
@@ -587,3 +588,43 @@ exports.notifyNewTurn = functions.database
       notifyPlayers(gameId);
     }
   });
+
+
+async function drawScrolls(gameRef) {
+  const decksRef = gameRef.child("decks");
+  // for each mage, draw 3 unused scrolls from their deck
+  // if not enough scrolls, set id as -1
+  const mages = ["earth", "fire", "water", "wind"];
+  for (const mage of mages) {
+    console.log("Mage: ", mage,);
+    const mageScrolls = await decksRef.child(mage).once("value").then(snap => {
+      return snap.val();
+    });    
+    console.log(mageScrolls);    
+    const unusedScrolls = getUnusedScrollsIds(mageScrolls);
+    console.log("Unused: ", unusedScrolls);
+    var scrollsIdsToDraw = unusedScrolls.map(scroll => scroll.id);
+    scrollsIdsToDraw = [...scrollsIdsToDraw, -1,-1,-1];
+
+    const hand = {
+      scroll0: scrollsIdsToDraw[0],
+      scroll1: scrollsIdsToDraw[1],
+      scroll2: scrollsIdsToDraw[2]
+    }
+    await gameRef.child(`hand_${mage}`).set(hand);
+  }
+  return ;
+}
+
+function getUnusedScrollsIds(scrolls) {
+  const scrollsKeys = Object.keys(scrolls);
+  const unusedScrolls = [];
+  if (scrollsKeys.length > 0) {
+    scrollsKeys.forEach(scrollKey => {
+      if (scrolls[scrollKey].used == 0) {
+        unusedScrolls.push(scrollKey);
+      }
+    });
+  }
+  return unusedScrolls
+}
