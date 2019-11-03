@@ -589,6 +589,56 @@ exports.notifyNewTurn = functions.database
     }
   });
 
+// Set used scroll as used in player's deck
+// onUpdate od onCreate??
+exports.setScrollAsUsed = functions.database
+  .ref("/games/{gameId}/turn/{effect}")
+  .onUpdate(async (change, context) => {
+    const effect = context.params.effect;
+    const gameId = context.params.gameId;
+    const userId = strClean(effectIdToUserId(effect));
+    console.log("Effect of user: ", userId);
+    const userMage = await getUserMageInGame(userId, gameId);
+    console.log("Change in mage: ", userMage);    
+    
+    const usedScrollId = change.after.child('scroll').val();
+    console.log("Used scroll: ", usedScrollId); 
+    const userDeckRef = admin.database().ref(`/games/${gameId}/decks/${userMage}/`);
+
+    const userDeckScrolls = await userDeckRef.once("value").then(snap => {
+      return snap.val();
+    });
+    console.log("Mage scrolls: ", userDeckScrolls);
+    
+    // search for first scroll in user's deck that maches userScrollId and mark it as used
+    for (const scroll in userDeckScrolls) {
+      if (userDeckScrolls.hasOwnProperty(scroll)) {
+        const aScroll = userDeckScrolls[scroll];
+        if (aScroll["id"] == usedScrollId) {
+          userDeckScrolls[scroll]["used"] = 1;
+          break;
+        }
+      }
+    }
+    // save changesuserMage
+    await userDeckRef.set(userDeckScrolls);
+    return ;
+
+  });
+
+async function getUserMageInGame(userId, gameId) {
+  const gameRef = admin.database().ref(`/games/${gameId}/`);
+
+  // var userMage = null;
+  const userMage = await gameRef.child("players").child(strClean(userId))
+    .once("value").then(snap => {
+      return snap.val();
+    });
+  // console.log(players);
+  // userMage = players[userId];
+  console.log("userMage: ", userMage);
+  return userMage;
+}
 
 async function drawScrolls(gameRef) {
   const decksRef = gameRef.child("decks");
