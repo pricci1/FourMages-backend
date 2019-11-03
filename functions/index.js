@@ -685,6 +685,13 @@ function getUnusedScrollsIds(scrolls) {
   return unusedScrolls
 }
 
+exports.initNewUser = functions.auth.user().onCreate(user => {
+  const email = strClean(user.email);
+  const uid = strClean(user.uid);
+  const displayName = strClean(user.displayName)|| strClean(email);
+  admin.database().ref(`/users/${uid}`).set({email, displayName, gold:0});
+  admin.database().ref(`/emailUid/${emailToId(email)}`).set(uid);
+});
 
 function strClean(str) {
   if (str && typeof str === 'string') {
