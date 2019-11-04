@@ -237,8 +237,8 @@ exports.createStatsOnUserCreation = functions.database
 function increaseStat(userId, stat){
   return admin
   .database()
-  .ref("/statistics/"+userId+"/"+stat).transaction(stat => {
-    return stat + 1;
+  .ref("/statistics/"+userId+"/"+stat).transaction(function(currentStat) {
+    return (currentStat || 0) + 1;
   });
 }
 
