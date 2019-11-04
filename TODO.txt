@@ -14,5 +14,4 @@ Notifications:
 	notify game resolution
 
 Statistics:
-	fix statistics update (vs creating new field)
 	game end statistics
