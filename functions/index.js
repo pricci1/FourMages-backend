@@ -240,7 +240,7 @@ function increaseStat(userId, stat){
   .ref("/statistics/"+userId+"/"+stat).transaction(function(currentStat) {
     return (currentStat || 0) + 1;
   });
-}
+} 
 
 function getWizType(gameId, userId){
   return admin
@@ -257,7 +257,10 @@ exports.updateStatsOnGameStart = functions.database
   var playerId = context.params.playerId;
   var gameId = context.params.gameId;
   var stat = "games_played";
-  var wiz_type = await getWizType(gameId, playerId);
+  var wiz_type = "";
+  await snapshot.ref.once("value").then( snap => {
+    wiz_type = snap.val();
+  });
   return Promise.all([increaseStat(playerId, stat), increaseStat(playerId, "games_played_with_" + wiz_type)]);
 });
 
@@ -548,9 +551,36 @@ function effectIdToUserId(effectId){
   return effectId.split("_")[1];
 }
 
+function getPlayerIdByDeckId(gameId, deckId){
+  return admin.database()
+  .ref(`games/${gameId}/players`)
+  .once("value").then( snap => {
+    console.log(snap.val());
+    for (const playerId in snap.val()) {
+      if (snap.val().hasOwnProperty(playerId)) {
+        if (snap.val()[playerId] == deckId) {
+          return playerId;
+        }
+      }
+    }
+  });
+}
+
 exports.updateStatsOnScrollPlayed = functions.database
-  .ref("games/{gameId}/turn/{effectId}/scroll")
-  .onCreate(async (snapshot, context) => {
+  .ref("games/{gameId}/decks/{deckId}/{scrollId}/used")
+  .onUpdate(async (change, context) => {
+    const deckId = context.params.deckId;
+    const scrollId = context.params.scrollId;
+    const gameId = context.params.gameId;
+    var scrollType = await getScrollType(scrollId);
+    var playerId = await getPlayerIdByDeckId(gameId, deckId);
+    var scrollCount = change.after.val();
+    if (scrollCount > '0'){
+      return increaseStat(playerId, scrollType + "_cards_played");
+    }
+  });
+  /*.ref("games/{gameId}/turn/{effectId}/scroll")
+  .onUpdate(async (change, context) => {
     const effectId = context.params.effectId;
     const userId = effectIdToUserId(effectId);
     var scrollId = "";
@@ -559,7 +589,7 @@ exports.updateStatsOnScrollPlayed = functions.database
     });
     var scrollType = await getScrollType(scrollId);
     return increaseStat(userId, scrollType + "_cards_played");
-});
+});*/
 
 function getGamePlayers(gameId){
   return admin
