@@ -579,17 +579,17 @@ exports.updateStatsOnScrollPlayed = functions.database
       return increaseStat(playerId, scrollType + "_cards_played");
     }
   });
-  /*.ref("games/{gameId}/turn/{effectId}/scroll")
-  .onUpdate(async (change, context) => {
-    const effectId = context.params.effectId;
-    const userId = effectIdToUserId(effectId);
-    var scrollId = "";
-    await snapshot.ref.once("value").then( snap => {
-      scrollId = snap.val();
-    });
-    var scrollType = await getScrollType(scrollId);
-    return increaseStat(userId, scrollType + "_cards_played");
-});*/
+  
+  exports.getStatistics = functions.https.onCall((data, context) => {
+    const userUid = strClean(data.uid) || context.auth.token.uid || null;
+
+    return admin
+      .database()
+      .ref(`statistics/${userUid}`)
+      .once("value").then(snap => {
+        return snap.val()
+      });
+  });
 
 function getGamePlayers(gameId){
   return admin
